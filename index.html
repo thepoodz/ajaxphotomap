@@ -392,7 +392,7 @@
         console.error('Error fetching official boundary:', err);
       }
 
-      // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
+     // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
       const SHEET_ID = '1snkK8IwRF1KeheABiig14VgBmXQWI-VP2fySK4CmjSE'; 
       const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
@@ -412,18 +412,17 @@
               const device = row.Device || row.device || '';
               const date = row.Date || row.date || '';
 
-              // Format metadata string: "iPhone 15 Pro • May 2025 • 43.8620, -79.0270"
+              // Format metadata string: "iPhone 15 Pro • May 2025" (No Lat/Long)
               const metaParts = [];
               if (device) metaParts.push(device);
               if (date) metaParts.push(date);
-              metaParts.push(`${latVal.toFixed(4)}, ${lngVal.toFixed(4)}`);
 
               const photo = {
                 title: row.Title || row.title || 'Untitled',
                 lat: latVal,
                 lng: lngVal,
                 imageUrl: row.Image || row.image || '',
-                caption: metaParts.join(' • ')
+                caption: metaParts.join(' • ') // Displays Device and Date cleanly
               };
 
               renderPhotoMarker(photo);
