@@ -1,7 +1,8 @@
 backend:
   name: github
-  repo: your-github-username/your-repository-name
+  repo: thepodz/ajaxphotomap
   branch: main
+  site_domain: ajaxmap.netlify.app
 
 media_folder: "photos"
 public_folder: "photos"
