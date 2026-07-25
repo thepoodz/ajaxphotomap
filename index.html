@@ -359,19 +359,21 @@
   }
 
   function closePanel() {
-    photoPanel.classList.remove('active');
-    appLayout.classList.remove('panel-open');
+  photoPanel.classList.remove('active');
+  appLayout.classList.remove('panel-open');
 
-    // Fly back to default position and zoom level when closing
-    map.flyTo({
-      center: defaultCenter,
-      zoom: defaultZoom,
-      bearing: defaultBearing,
-      essential: true
-    });
+  // 1. Instantly trigger map resize so MapLibre knows it has 100% width again
+  map.resize();
 
-    setTimeout(() => { map.resize(); }, 50);
-  }
+  // 2. Smoothly re-center back to your default coordinates
+  map.easeTo({
+    center: defaultCenter,
+    zoom: defaultZoom,
+    bearing: defaultBearing,
+    duration: 500, // Smooth half-second transition
+    essential: true
+  });
+}
 
   panelCloseBtn.addEventListener('click', closePanel);
 
