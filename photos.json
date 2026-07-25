@@ -5,7 +5,14 @@
       "caption": "Looking west along Rossland Road on a smokey day",
       "imageUrl": "photos/Rossland_Rushworth.jpg",
       "lng": -79.009272,
-      "lat": 43.883940
+      "lat": 43.88394
+    },
+    {
+      "imageUrl": "photos/Church_tracks.jpg",
+      "title": "Church Street Tracks",
+      "caption": "Looking west down the tracks at Church Street North",
+      "lng": -79.071194,
+      "lat": 43.891028
     }
   ]
 }
