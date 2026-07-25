@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Photo Map</title>
+  <title>Ajax Photo Map</title>
 
   <!-- MapLibre GL CSS -->
-  <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
 
   <style>
     * {
@@ -24,16 +24,16 @@
     /* Main Split-Screen Container */
     .app-container {
       display: flex;
-      flex-direction: column-reverse; /* Map on top, photo panel below on mobile */
+      flex-direction: column-reverse; /* Stacks on mobile */
       height: 100vh;
       width: 100vw;
       overflow: hidden;
     }
 
-    /* Desktop View: Side-by-Side Split */
+    /* Desktop View: Split Screen */
     @media (min-width: 768px) {
       .app-container {
-        flex-direction: row; /* Side-by-side on desktop */
+        flex-direction: row;
       }
     }
 
@@ -47,11 +47,11 @@
     @media (min-width: 768px) {
       #map-panel {
         height: 100%;
-        flex: 1; /* Map takes up remaining width */
+        flex: 1;
       }
     }
 
-    /* Right Panel: Selected Photo Display */
+    /* Right Panel: Selected Photo */
     #photo-panel {
       flex: 1;
       height: 50vh;
@@ -67,7 +67,7 @@
     @media (min-width: 768px) {
       #photo-panel {
         height: 100%;
-        max-width: 450px; /* Clean panel width on wide desktop screens */
+        max-width: 450px;
         border-top: none;
         border-left: 1px solid #2a2a2a;
       }
@@ -110,7 +110,6 @@
       color: #cccccc;
     }
 
-    /* Placeholder view before clicking a pin */
     .empty-state {
       margin: auto;
       text-align: center;
@@ -126,12 +125,10 @@
 
     <!-- Right Side: Photo Display Panel -->
     <div id="photo-panel">
-      <!-- Default view when no pin is selected -->
       <div id="empty-state" class="empty-state">
         <p>Select a pin on the map to view photo details.</p>
       </div>
 
-      <!-- Active photo container (populated dynamically) -->
       <div id="photo-card" class="photo-card" style="display: none;">
         <img id="active-photo" src="" alt="Selected photo" />
         <div class="photo-details">
@@ -146,38 +143,28 @@
   <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 
-  <!-- Main Application Logic -->
   <script>
-    // 1. Initialize MapLibre Map
+    // 1. Initialize MapLibre
     const map = new maplibregl.Map({
       container: 'map-panel',
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-      center: [-79.0204, 43.8600],
-      zoom: 13,
-      bearing: -17,
-      pitch: 0,
-      dragRotate: false,
-      pitchWithRotate: false,
-      touchPitch: false,
-      touchZoomRotate: true
+      style: 'https://demotiles.maplibre.org/style.json',
+      center: [-79.0204, 43.8509], // Centered on Ajax
+      zoom: 12
     });
 
-    // Add navigation controls (zoom/rotation)
     map.addControl(new maplibregl.NavigationControl());
 
-    // 2. Fetch photo data from photos.json and add markers/layer
     map.on('load', async () => {
+      // Load photos.json from root directory
       try {
         const response = await fetch('photos.json');
         const photoData = await response.json();
 
-        // Add GeoJSON source
         map.addSource('photos-source', {
           type: 'geojson',
           data: photoData
         });
 
-        // Add point layer for photo pins
         map.addLayer({
           id: 'photo-pins',
           type: 'circle',
@@ -190,29 +177,24 @@
           }
         });
 
-        // Change cursor to pointer over pins
-        map.on('mouseenter', 'photo-pins', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
+        map.on('mouseenter', 'photo-pins', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'photo-pins', () => { map.getCanvas().style.cursor = ''; });
 
-        map.on('mouseleave', 'photo-pins', () => {
-          map.getCanvas().style.cursor = '';
-        });
-
-      } catch (error) {
-        console.error('Error loading photos.json:', error);
+      } catch (err) {
+        console.error("Error loading photos.json:", err);
       }
+
+      // Ensure canvas fills split container properly on initial render
+      map.resize();
     });
 
-    // 3. Update Photo Panel on Pin Click
+    // 2. Route Marker Clicks to Right Photo Panel
     map.on('click', 'photo-pins', (e) => {
       const feature = e.features[0];
-      const properties = feature.properties;
+      const props = feature.properties;
 
-      // Display the photo panel
-      displayPhotoDetails(properties);
+      displayPhotoDetails(props);
 
-      // Pan smoothly to selected photo point
       map.flyTo({
         center: feature.geometry.coordinates,
         zoom: 15,
@@ -220,18 +202,18 @@
       });
     });
 
-    // Helper to populate HTML elements inside the right panel
     function displayPhotoDetails(props) {
       document.getElementById('empty-state').style.display = 'none';
       document.getElementById('photo-card').style.display = 'block';
 
-      document.getElementById('active-photo').src = props.imageUrl || props.image || props.url || '';
-      document.getElementById('photo-title').textContent = props.title || 'Untitled Spot';
+      // Maps properties coming from Decap / photos.json
+      document.getElementById('active-photo').src = props.image || props.imageUrl || props.url || '';
+      document.getElementById('photo-title').textContent = props.title || 'Untitled';
       document.getElementById('photo-date').textContent = props.date || '';
       document.getElementById('photo-description').textContent = props.description || props.notes || '';
     }
 
-    // 4. Recalculate map dimensions on browser resize to prevent grey box gaps
+    // Keep map sizing tight when browser resizes
     window.addEventListener('resize', () => {
       map.resize();
     });
