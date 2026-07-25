@@ -37,7 +37,7 @@
       position: relative;
       background: #1a1a1a;
       color: #fff;
-      padding: 28px 24px 90px 24px;
+      padding: 28px 24px 40px 24px;
       overflow-y: auto;
       z-index: 1000;
     }
@@ -75,8 +75,7 @@
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.25s ease, visibility 0.25s ease;
-      /* Top & bottom margin buffer for mobile browser bars */
-      padding: 16px 0;
+      padding: 0; /* Zero margins */
     }
 
     .photo-modal-overlay.active {
@@ -84,19 +83,19 @@
       visibility: visible;
     }
 
-    /* Mobile First Modal Card: Edge-to-edge horizontally with clean top/bottom margins */
+    /* Mobile First Modal Card: Edge-to-edge horizontally & vertically */
     .photo-modal-card {
       position: relative;
       background: #ffffff;
       border: none;
       border-radius: 0;
       width: 100vw;
-      height: calc(100vh - 32px);
+      height: 100vh;
       max-width: 100vw;
-      max-height: calc(100vh - 32px);
+      max-height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
       box-shadow: none;
       transform: scale(0.98);
       transition: transform 0.25s ease;
@@ -125,8 +124,6 @@
 
     .photo-modal-image-wrap {
       width: 100%;
-      flex: 1;
-      max-height: 65vh;
       background: #0f172a;
       display: flex;
       align-items: center;
@@ -144,9 +141,10 @@
     }
 
     .photo-modal-info {
-      padding: 20px 24px 90px 24px;
+      padding: 24px;
       background: #ffffff;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .photo-modal-info h2 {
@@ -159,24 +157,29 @@
     .photo-modal-info p {
       color: #475569;
       font-size: 15px;
-      line-height: 1.4;
+      line-height: 1.5;
+      margin-bottom: 20px; /* Space above close button */
     }
 
-    /* Universal Bottom-Right Close Pill Button (accounts for mobile safe areas) */
+    /* Inline Close Button Container */
+    .button-row {
+      display: flex;
+      justify-content: flex-end; /* Aligns button to the right */
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    /* Universal Close Pill Button */
     .pill-close-btn {
-      position: fixed;
-      bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-      right: 20px;
       background: #ff4757;
       color: #ffffff;
       border: none;
       border-radius: 24px;
-      padding: 12px 24px;
-      font-size: 15px;
+      padding: 10px 22px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 10001;
+      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
       transition: transform 0.15s ease, background-color 0.15s ease;
     }
 
@@ -188,6 +191,11 @@
     .pill-close-btn:hover {
       background: #ff3344;
     }
+
+    /* Inline positioning for Desktop panel */
+    #photo-panel .button-row {
+      margin-top: 24px;
+    }
   </style>
 </head>
 <body>
@@ -198,11 +206,10 @@
   <!-- Pop-out Photo Panel (Desktop) -->
   <div id="photo-panel">
     <div id="photo-content"></div>
-    <button class="pill-close-btn" id="panel-close-btn">Close</button>
   </div>
 </div>
 
-  <!-- Modal Overlay (Mobile Edge-to-Edge + Desktop Enlarged View) -->
+  <!-- Modal Overlay (Mobile Full Screen + Desktop Enlarged View) -->
   <div id="photo-modal" class="photo-modal-overlay">
     <div class="photo-modal-card" id="modal-card">
       <div class="photo-modal-image-wrap">
@@ -211,8 +218,10 @@
       <div class="photo-modal-info">
         <h2 id="modal-title"></h2>
         <p id="modal-caption"></p>
+        <div class="button-row">
+          <button class="pill-close-btn" id="modal-close-btn">Close</button>
+        </div>
       </div>
-      <button class="pill-close-btn" id="modal-close-btn">Close</button>
     </div>
   </div>
 
@@ -222,7 +231,6 @@
   <script>
     const appLayout = document.getElementById('app-layout');
     const photoPanel = document.getElementById('photo-panel');
-    const panelCloseBtn = document.getElementById('panel-close-btn');
 
     // Initial map settings
     const defaultCenter = [-79.0270, 43.8620];
@@ -302,13 +310,18 @@
           <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 12px; margin-bottom: 20px; background: #000; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" id="side-panel-img" />
           <h2 style="font-size: 1.6rem; margin-bottom: 8px; color: #fff; font-weight: 600;">${title}</h2>
           ${date ? `<p style="font-size: 0.9rem; color: #888; margin-bottom: 14px;">${date}</p>` : ''}
-          ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem;">${caption}</p>` : ''}
+          ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem; margin-bottom: 20px;">${caption}</p>` : ''}
+          <div class="button-row">
+            <button class="pill-close-btn" id="panel-close-btn">Close</button>
+          </div>
         </div>
       `;
 
       document.getElementById('side-panel-img').addEventListener('click', () => {
         openModal(photo);
       });
+
+      document.getElementById('panel-close-btn').addEventListener('click', closePanel);
 
       photoPanel.classList.add('active');
       appLayout.classList.add('panel-open');
@@ -331,8 +344,6 @@
         });
       }, 250);
     }
-
-    panelCloseBtn.addEventListener('click', closePanel);
 
     // Marker Rendering
     function renderPhotoMarker(photo) {
