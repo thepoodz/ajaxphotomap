@@ -414,8 +414,8 @@
 
               // Format metadata string: "iPhone 15 Pro • May 2025" (No Lat/Long)
               const metaParts = [];
-              if (device) metaParts.push(device);
               if (date) metaParts.push(date);
+              if (device) metaParts.push(device);
 
               const photo = {
                 title: row.Title || row.title || 'Untitled',
