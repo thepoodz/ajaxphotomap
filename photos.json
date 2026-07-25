@@ -1,39 +1,11 @@
 {
   "photos": [
     {
-        title: "Rossland & Rushworth",
-        caption: "Looking west along Rossland Road on a smokey day.",
-        lng: -79.009272,
-        lat: 43.883940,
-        imageUrl: "./photos/Rossland_Rushworth.jpg"
-      },
-      {
-        title: "Church St Tracks",
-        caption: "Looking west down the tracks at Church St north.",
-        lng: -79.071194,
-        lat: 43.891028,
-        imageUrl: "./photos/Church_tracks.jpg"
-      },
-      {
-        title: "Mullen-Delaney Catwalk",
-        caption: "Looking north up the catwalk between Delaney and Mullen.",
-        lng: -79.049694,
-        lat: 43.870556,
-        imageUrl: "./photos/Mullen_catwalk.jpg"
-      },
-      {
-        title: "Clements Woodlot",
-        caption: "Looking south down the path through Clements Woodlot in November.",
-        lng: -79.018306,
-        lat: 43.834944,
-        imageUrl: "./photos/Clements_woodlot.jpg"
-      }
-    {
-        title: "South Duffins",
-        caption: "Looking west across the end of Duffins Creek at sunset.",
-        lng: -79.033750,
-        lat: 43.821528,
-        imageUrl: "./photos/South_duffins.jpg"
-      }
+      "title": "Rossland & Rushworth",
+      "caption": "Looking west along Rossland Road on a smokey day",
+      "imageUrl": "photos/Rossland_Rushworth.jpg",
+      "lng": -79.009272,
+      "lat": 43.883940
+    }
   ]
 }
