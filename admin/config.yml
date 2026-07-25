@@ -1,5 +1,6 @@
 backend:
-  name: git-gateway
+  name: github
+  repo: your-github-username/your-repository-name
   branch: main
 
 media_folder: "photos"
