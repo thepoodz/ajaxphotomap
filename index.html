@@ -8,6 +8,9 @@
   <!-- MapLibre CSS -->
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
 
+  <!-- PapaParse for parsing Google Sheet CSV -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
   <!-- Netlify Identity Widget for Decap CMS -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
@@ -390,17 +393,32 @@
         console.error('Error fetching official boundary:', err);
       }
 
-      // 3. Dynamic Fetch: Load photo points from external photos.json
-      try {
-        const photosResponse = await fetch('./photos.json');
-        const data = await photosResponse.json();
+      // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
+      const SHEET_ID = '2PACX-1vRThlZrUgFmaOVTTgjPnDrUNuIGo0M23H98hoAGih-pmA-LvNzIdAmznNXA5k9teaeCUM-cZpalMu3d
+'; // Replace with your Sheet ID
+      const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
-        if (data && data.photos) {
-          data.photos.forEach(renderPhotoMarker);
+      Papa.parse(SHEET_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          const photos = results.data;
+
+          photos.forEach(photo => {
+            // Convert coordinate string values from CSV to numbers
+            photo.lat = parseFloat(photo.lat);
+            photo.lng = parseFloat(photo.lng);
+
+            if (!isNaN(photo.lat) && !isNaN(photo.lng)) {
+              renderPhotoMarker(photo);
+            }
+          });
+        },
+        error: function(err) {
+          console.error('Error loading Google Sheet data:', err);
         }
-      } catch (err) {
-        console.error('Error loading photos.json:', err);
-      }
+      });
     });
 
     window.addEventListener('resize', () => { map.resize(); });
