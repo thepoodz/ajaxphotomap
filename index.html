@@ -166,8 +166,19 @@
   </style>
 </head>
 <body>
-
+<div class="app-layout">
+  <!-- Your existing map div -->
   <div id="map"></div>
+
+  <!-- New side panel for photo display -->
+  <div id="photo-panel">
+    <div id="photo-content">
+      <p style="color: #888; text-align: center; margin-top: 50%;">
+        Select a pin on the map to view photo details.
+      </p>
+    </div>
+  </div>
+</div>
 
   <!-- Large Modal HTML Structure -->
   <div id="photo-modal" class="photo-modal-overlay">
