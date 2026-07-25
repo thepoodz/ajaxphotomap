@@ -18,63 +18,48 @@
     /* Layout Wrapper */
     .app-layout {
       display: flex;
-      flex-direction: column-reverse;
       height: 100vh;
       width: 100vw;
       overflow: hidden;
       position: relative;
     }
 
-    @media (min-width: 768px) {
-      .app-layout {
-        flex-direction: row;
-      }
-    }
-
-    /* Left Side: Map Container */
+    /* Map Container */
     #map { 
-      width: 100%;
-      height: 100%;
-      flex: 1;
+      width: 100vw;
+      height: 100vh;
       transition: all 0.3s ease;
     }
 
-    /* Right Side: Pop-out Photo Panel */
+    /* Right Side: Desktop Pop-out Photo Panel */
     #photo-panel {
-      display: none; /* Hidden by default for full-screen map view */
+      display: none; /* Hidden on mobile by default */
       position: relative;
       background: #1a1a1a;
       color: #fff;
       padding: 28px 24px 24px 24px;
       overflow-y: auto;
-      border-top: 1px solid #333;
       z-index: 1000;
     }
 
-    /* Active state when a pin is clicked */
-    #photo-panel.active {
-      display: block;
-    }
-
+    /* Desktop Split Screen (768px and up) */
     @media (min-width: 768px) {
       #photo-panel {
-        border-top: none;
         border-left: 1px solid #333;
       }
 
-      /* 70% Photo Panel / 30% Map Split on Desktop */
       #photo-panel.active {
+        display: block;
         width: 70vw;
         height: 100%;
       }
 
       .app-layout.panel-open #map {
         width: 30vw;
-        flex: none;
       }
     }
 
-    /* Close (X) Button */
+    /* Desktop Close (X) Button */
     .panel-close-btn {
       position: absolute;
       top: 16px;
@@ -207,7 +192,7 @@
     }
 
     .photo-modal-info {
-      padding: 20px 24px;
+      padding: 20px 24px 60px 24px;
       background: #ffffff;
     }
 
@@ -223,14 +208,47 @@
       font-size: 15px;
       line-height: 1.4;
     }
+
+    /* Mobile Close Button (Bottom Right) */
+    .mobile-close-btn {
+      display: block;
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: #ff4757;
+      color: #ffffff;
+      border: none;
+      border-radius: 24px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      z-index: 10000;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    .mobile-close-btn:active {
+      transform: scale(0.95);
+      background: #e03e4d;
+    }
+
+    @media (min-width: 768px) {
+      .mobile-close-btn {
+        display: none;
+      }
+      .photo-modal-info {
+        padding: 20px 24px;
+      }
+    }
   </style>
 </head>
 <body>
 <div class="app-layout" id="app-layout">
-  <!-- Map Container (Starts full screen) -->
+  <!-- Map Container -->
   <div id="map"></div>
 
-  <!-- Pop-out Photo Panel -->
+  <!-- Pop-out Photo Panel (Desktop) -->
   <div id="photo-panel">
     <button class="panel-close-btn" id="panel-close-btn" title="Close Panel">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -242,7 +260,7 @@
   </div>
 </div>
 
-  <!-- Modal Overlay -->
+  <!-- Modal Overlay (Mobile + Desktop Zoomed View) -->
   <div id="photo-modal" class="photo-modal-overlay">
     <div class="photo-modal-card" id="modal-card">
       <button class="photo-modal-close" id="modal-close-btn" title="Close (Esc)">
@@ -258,192 +276,201 @@
         <h2 id="modal-title"></h2>
         <p id="modal-caption"></p>
       </div>
+      <button class="mobile-close-btn" id="modal-mobile-close-btn">Close</button>
     </div>
   </div>
 
   <!-- MapLibre JS -->
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
-<script>
-  const appLayout = document.getElementById('app-layout');
-  const photoPanel = document.getElementById('photo-panel');
-  const panelCloseBtn = document.getElementById('panel-close-btn');
+  <script>
+    const appLayout = document.getElementById('app-layout');
+    const photoPanel = document.getElementById('photo-panel');
+    const panelCloseBtn = document.getElementById('panel-close-btn');
 
-  // Initial map settings
-  const defaultCenter = [-79.0270, 43.8620];
-  const defaultZoom = 11.5;
-  const defaultBearing = -17;
+    // Initial map settings
+    const defaultCenter = [-79.0270, 43.8620];
+    const defaultZoom = 11.5;
+    const defaultBearing = -17;
 
-  // Initialize MapLibre
-  const map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-    center: defaultCenter,
-    zoom: defaultZoom,
-    bearing: defaultBearing,
-    pitch: 0,
-    dragRotate: false,
-    pitchWithRotate: false,
-    touchPitch: false,
-    touchZoomRotate: true
-  });
-
-  map.touchZoomRotate.disableRotation();
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-
-  function buildInverseWorldMask(geometry) {
-    let holes = [];
-    if (geometry.type === 'Polygon') {
-      holes = geometry.coordinates;
-    } else if (geometry.type === 'MultiPolygon') {
-      geometry.coordinates.forEach(polyCoords => holes.push(polyCoords[0]));
-    }
-    return {
-      "type": "FeatureCollection",
-      "features": [{
-        "type": "Feature",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]], ...holes]
-        }
-      }]
-    };
-  }
-
-  // Modal Lightbox Logic
-  const modalOverlay = document.getElementById('photo-modal');
-  const modalImg = document.getElementById('modal-img');
-  const modalTitle = document.getElementById('modal-title');
-  const modalCaption = document.getElementById('modal-caption');
-  const modalCloseBtn = document.getElementById('modal-close-btn');
-
-  function openModal(photo) {
-    modalImg.src = photo.imageUrl || photo.image || photo.url || '';
-    modalImg.alt = photo.title || 'Untitled';
-    modalTitle.textContent = photo.title || 'Untitled';
-    modalCaption.textContent = photo.caption || photo.description || '';
-    modalOverlay.classList.add('active');
-  }
-
-  function closeModal() { modalOverlay.classList.remove('active'); }
-  modalCloseBtn.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-
-  // Panel Toggle Functions
-  function openPanel(photo) {
-    const imageSrc = photo.imageUrl || photo.image || photo.url || '';
-    const title = photo.title || 'Untitled';
-    const caption = photo.caption || photo.description || '';
-    const date = photo.date || '';
-
-    const panelContent = document.getElementById('photo-content');
-
-    panelContent.innerHTML = `
-      <div style="width: 100%;">
-        <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 12px; margin-bottom: 20px; background: #000; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" id="side-panel-img" />
-        <h2 style="font-size: 1.6rem; margin-bottom: 8px; color: #fff; font-weight: 600;">${title}</h2>
-        ${date ? `<p style="font-size: 0.9rem; color: #888; margin-bottom: 14px;">${date}</p>` : ''}
-        ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem;">${caption}</p>` : ''}
-      </div>
-    `;
-
-    document.getElementById('side-panel-img').addEventListener('click', () => {
-      openModal(photo);
-    });
-
-    photoPanel.classList.add('active');
-    appLayout.classList.add('panel-open');
-    
-    setTimeout(() => { map.resize(); }, 50);
-  }
-
-  function closePanel() {
-  // 1. Trigger the CSS transition to close the panel
-  photoPanel.classList.remove('active');
-  appLayout.classList.remove('panel-open');
-
-  // 2. Wait for the side panel transition to finish expanding the map container
-  setTimeout(() => {
-    // Force MapLibre to calculate its brand new 100vw width
-    map.resize();
-
-    // Now glide straight to the true dead-center of the full screen
-    map.easeTo({
+    // Initialize MapLibre
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
       center: defaultCenter,
       zoom: defaultZoom,
       bearing: defaultBearing,
-      duration: 600,
-      essential: true
+      pitch: 0,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      touchZoomRotate: true
     });
-  }, 250); // Matches the CSS transition timing
-}
 
-  panelCloseBtn.addEventListener('click', closePanel);
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
-  // Marker Rendering (No zooming on click!)
-  function renderPhotoMarker(photo) {
-    const marker = new maplibregl.Marker({ color: '#ff4757' })
-      .setLngLat([photo.lng, photo.lat])
-      .addTo(map);
+    function buildInverseWorldMask(geometry) {
+      let holes = [];
+      if (geometry.type === 'Polygon') {
+        holes = geometry.coordinates;
+      } else if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach(polyCoords => holes.push(polyCoords[0]));
+      }
+      return {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]], ...holes]
+          }
+        }]
+      };
+    }
 
-    marker.getElement().addEventListener('click', () => {
-      openPanel(photo);
-    });
-  }
+    // Modal Lightbox Logic
+    const modalOverlay = document.getElementById('photo-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalCaption = document.getElementById('modal-caption');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalMobileCloseBtn = document.getElementById('modal-mobile-close-btn');
 
-  map.on('load', async () => {
-    // 1. Reveal street labels earlier
-    const styleLayers = map.getStyle().layers;
-    styleLayers.forEach(layer => {
-      if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('label')) {
-        if (layer.minzoom) {
-          map.setLayerZoomRange(layer.id, Math.max(0, layer.minzoom - 3), layer.maxzoom || 24);
+    function openModal(photo) {
+      modalImg.src = photo.imageUrl || photo.image || photo.url || '';
+      modalImg.alt = photo.title || 'Untitled';
+      modalTitle.textContent = photo.title || 'Untitled';
+      modalCaption.textContent = photo.caption || photo.description || '';
+      modalOverlay.classList.add('active');
+    }
+
+    function closeModal() { 
+      modalOverlay.classList.remove('active'); 
+    }
+
+    modalCloseBtn.addEventListener('click', closeModal);
+    if (modalMobileCloseBtn) {
+      modalMobileCloseBtn.addEventListener('click', closeModal);
+    }
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // Desktop Panel Controls
+    function openPanel(photo) {
+      const imageSrc = photo.imageUrl || photo.image || photo.url || '';
+      const title = photo.title || 'Untitled';
+      const caption = photo.caption || photo.description || '';
+      const date = photo.date || '';
+
+      const panelContent = document.getElementById('photo-content');
+
+      panelContent.innerHTML = `
+        <div style="width: 100%;">
+          <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 12px; margin-bottom: 20px; background: #000; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" id="side-panel-img" />
+          <h2 style="font-size: 1.6rem; margin-bottom: 8px; color: #fff; font-weight: 600;">${title}</h2>
+          ${date ? `<p style="font-size: 0.9rem; color: #888; margin-bottom: 14px;">${date}</p>` : ''}
+          ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem;">${caption}</p>` : ''}
+        </div>
+      `;
+
+      document.getElementById('side-panel-img').addEventListener('click', () => {
+        openModal(photo);
+      });
+
+      photoPanel.classList.add('active');
+      appLayout.classList.add('panel-open');
+      
+      setTimeout(() => { map.resize(); }, 50);
+    }
+
+    function closePanel() {
+      photoPanel.classList.remove('active');
+      appLayout.classList.remove('panel-open');
+
+      setTimeout(() => {
+        map.resize();
+        map.easeTo({
+          center: defaultCenter,
+          zoom: defaultZoom,
+          bearing: defaultBearing,
+          duration: 600,
+          essential: true
+        });
+      }, 250);
+    }
+
+    panelCloseBtn.addEventListener('click', closePanel);
+
+    // Marker Rendering (Switches between Mobile Modal and Desktop Panel)
+    function renderPhotoMarker(photo) {
+      const marker = new maplibregl.Marker({ color: '#ff4757' })
+        .setLngLat([photo.lng, photo.lat])
+        .addTo(map);
+
+      marker.getElement().addEventListener('click', () => {
+        const isMobile = window.innerWidth < 768;
+
+        if (isMobile) {
+          openModal(photo);
+        } else {
+          openPanel(photo);
         }
+      });
+    }
+
+    map.on('load', async () => {
+      // 1. Reveal street labels earlier
+      const styleLayers = map.getStyle().layers;
+      styleLayers.forEach(layer => {
+        if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('label')) {
+          if (layer.minzoom) {
+            map.setLayerZoomRange(layer.id, Math.max(0, layer.minzoom - 3), layer.maxzoom || 24);
+          }
+        }
+      });
+
+      // 2. Fetch official Ajax boundary
+      try {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?city=Ajax&state=Ontario&country=Canada&polygon_geojson=1&format=geojson');
+        const data = await response.json();
+        const ajaxFeature = data.features.find(f => f.properties.type === 'administrative' || f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') || data.features[0];
+
+        if (ajaxFeature) {
+          const maskGeoJSON = buildInverseWorldMask(ajaxFeature.geometry);
+          map.addSource('ajax-mask-source', { 'type': 'geojson', 'data': maskGeoJSON });
+          map.addLayer({
+            'id': 'ajax-dim-mask',
+            'type': 'fill',
+            'source': 'ajax-mask-source',
+            'paint': { 'fill-color': '#1e293b', 'fill-opacity': 0.38 }
+          });
+          map.addLayer({
+            'id': 'ajax-mask-outline',
+            'type': 'line',
+            'source': 'ajax-mask-source',
+            'paint': { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.85 }
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching official boundary:', err);
+      }
+
+      // 3. Dynamic Fetch: Load photo points from external photos.json
+      try {
+        const photosResponse = await fetch('/photos.json');
+        const data = await photosResponse.json();
+
+        if (data && data.photos) {
+          data.photos.forEach(renderPhotoMarker);
+        }
+      } catch (err) {
+        console.error('Error loading photos.json:', err);
       }
     });
 
-    // 2. Fetch official Ajax boundary
-    try {
-      const response = await fetch('https://nominatim.openstreetmap.org/search?city=Ajax&state=Ontario&country=Canada&polygon_geojson=1&format=geojson');
-      const data = await response.json();
-      const ajaxFeature = data.features.find(f => f.properties.type === 'administrative' || f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') || data.features[0];
-
-      if (ajaxFeature) {
-        const maskGeoJSON = buildInverseWorldMask(ajaxFeature.geometry);
-        map.addSource('ajax-mask-source', { 'type': 'geojson', 'data': maskGeoJSON });
-        map.addLayer({
-          'id': 'ajax-dim-mask',
-          'type': 'fill',
-          'source': 'ajax-mask-source',
-          'paint': { 'fill-color': '#1e293b', 'fill-opacity': 0.38 }
-        });
-        map.addLayer({
-          'id': 'ajax-mask-outline',
-          'type': 'line',
-          'source': 'ajax-mask-source',
-          'paint': { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.85 }
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching official boundary:', err);
-    }
-
-    // 3. Dynamic Fetch: Load photo points from external photos.json
-    try {
-      const photosResponse = await fetch('/photos.json');
-      const data = await photosResponse.json();
-
-      if (data && data.photos) {
-        data.photos.forEach(renderPhotoMarker);
-      }
-    } catch (err) {
-      console.error('Error loading photos.json:', err);
-    }
-  });
-
-  window.addEventListener('resize', () => { map.resize(); });
-</script>
+    window.addEventListener('resize', () => { map.resize(); });
+  </script>
 
   <!-- Netlify Identity Login Redirect Script -->
   <script>
