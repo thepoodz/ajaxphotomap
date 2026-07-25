@@ -69,6 +69,13 @@
       "caption": "Moon over Lake Ontario at sunrise at Paradise Beach",
       "lng": -78.99471,
       "lat": 43.82728
+    },
+    {
+      "title": "Arc at ARC",
+      "caption": "The playground at the Audley Recreation Centre",
+      "imageUrl": "photos/img_20250615_195953.jpg_compressed.jpeg",
+      "lng": -79.00749,
+      "lat": 43.8975
     }
   ]
 }
