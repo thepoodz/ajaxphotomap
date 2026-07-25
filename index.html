@@ -145,12 +145,21 @@
 
   <script>
     // 1. Initialize MapLibre
-    const map = new maplibregl.Map({
-      container: 'map-panel',
-      style: 'https://demotiles.maplibre.org/style.json',
-      center: [-79.0204, 43.8509], // Centered on Ajax
-      zoom: 12
-    });
+    // 1. Initialize MapLibre with street tiles
+const map = new maplibregl.Map({
+  container: 'map-panel',
+  
+  // Free, high-detail street style (Carto Dark Matter fits dark mode well):
+  style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  
+  /* 
+   * Alternatively, if you want a clean light street map instead, use:
+   * style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+   */
+
+  center: [-79.0204, 43.8509], // Ajax, ON
+  zoom: 12
+});
 
     map.addControl(new maplibregl.NavigationControl());
 
