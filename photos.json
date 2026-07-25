@@ -83,6 +83,13 @@
       "caption": "Looking south at the front of HomeSense.",
       "lng": -79.02518,
       "lat": 43.86332
+    },
+    {
+      "title": "Concession 5",
+      "caption": "Looking west down the hill on Concession 5",
+      "imageUrl": "photos/img_20201018_162054-1-.jpg_compressed.jpeg",
+      "lng": -79.06489,
+      "lat": 43.90956
     }
   ]
 }
