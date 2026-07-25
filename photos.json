@@ -27,6 +27,13 @@
       "caption": "Looking north up the catwalk between Delaney and Mullen",
       "lng": -79.049694,
       "lat": 43.870556
+    },
+    {
+      "imageUrl": "photos/South_duffins.jpg",
+      "title": "South Duffins",
+      "caption": "Looking west across the end of Duffins Creek at sunset",
+      "lat": 43.8215,
+      "lng": -79.03368
     }
   ]
 }
