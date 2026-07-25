@@ -359,20 +359,24 @@
   }
 
   function closePanel() {
+  // 1. Trigger the CSS transition to close the panel
   photoPanel.classList.remove('active');
   appLayout.classList.remove('panel-open');
 
-  // 1. Instantly trigger map resize so MapLibre knows it has 100% width again
-  map.resize();
+  // 2. Wait for the side panel transition to finish expanding the map container
+  setTimeout(() => {
+    // Force MapLibre to calculate its brand new 100vw width
+    map.resize();
 
-  // 2. Smoothly re-center back to your default coordinates
-  map.easeTo({
-    center: defaultCenter,
-    zoom: defaultZoom,
-    bearing: defaultBearing,
-    duration: 500, // Smooth half-second transition
-    essential: true
-  });
+    // Now glide straight to the true dead-center of the full screen
+    map.easeTo({
+      center: defaultCenter,
+      zoom: defaultZoom,
+      bearing: defaultBearing,
+      duration: 600,
+      essential: true
+    });
+  }, 250); // Matches the CSS transition timing
 }
 
   panelCloseBtn.addEventListener('click', closePanel);
