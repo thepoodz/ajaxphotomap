@@ -319,6 +319,38 @@
       }
     });
     window.addEventListener('resize', () => { map.resize(); });
+    // Global handler: Directs any clicked photo point into the side panel
+map.on('click', (e) => {
+  // Query features at the clicked point
+  const features = map.queryRenderedFeatures(e.point);
+  
+  if (!features.length) return;
+
+  // Look for a feature with photo properties
+  const photoFeature = features.find(f => f.properties && (f.properties.image || f.properties.title || f.properties.url));
+
+  if (photoFeature) {
+    const props = photoFeature.properties;
+
+    const imageSrc = props.image || props.imageUrl || props.url || '';
+    const title = props.title || 'Untitled';
+    const date = props.date || '';
+    const description = props.description || props.notes || '';
+
+    const panelContent = document.getElementById('photo-content');
+
+    if (panelContent) {
+      panelContent.innerHTML = `
+        <div style="width: 100%;">
+          <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 50vh; object-fit: contain; border-radius: 8px; margin-bottom: 16px; background: #000;" />
+          <h2 style="font-size: 1.3rem; margin-bottom: 6px; color: #fff;">${title}</h2>
+          ${date ? `<p style="font-size: 0.85rem; color: #888; margin-bottom: 12px;">${date}</p>` : ''}
+          ${description ? `<p style="line-height: 1.5; color: #ccc; font-size: 0.95rem;">${description}</p>` : ''}
+        </div>
+      `;
+    }
+  }
+});
   </script>
 
   <!-- Netlify Identity Login Redirect Script -->
