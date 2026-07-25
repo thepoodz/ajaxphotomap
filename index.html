@@ -393,8 +393,8 @@
         console.error('Error fetching official boundary:', err);
       }
 
-      // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
-      const SHEET_ID = '1snkK8IwRF1KeheABiig14VgBmXQWI-VP2fySK4CmjSE'; // Replace with your Sheet ID
+     // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
+      const SHEET_ID = '1snkK8IwRF1KeheABiig14VgBmXQWI-VP2fySK4CmjSE'; 
       const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
       Papa.parse(SHEET_URL, {
@@ -402,13 +402,29 @@
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-          const photos = results.data;
+          const rows = results.data;
 
-          photos.forEach(photo => {
-            // Convert coordinate string values from CSV to numbers
-            photo.lat = parseFloat(photo.lat);
-            photo.lng = parseFloat(photo.lng);
+          rows.forEach(row => {
+            // Map your specific spreadsheet columns to the photo object
+            const photo = {
+              title: row.Title || row.title || 'Untitled',
+              lat: parseFloat(row.Lat || row.lat),
+              lng: parseFloat(row.Long || row.lng || row.Lng),
+              imageUrl: row.Image || row.image || '',
+              device: row.Device || row.device || '',
+              date: row.Date || row.date || ''
+            };
 
+            // Build a formatted metadata line: "iPhone 13 • Oct 2023 • 43.8501, -79.0204"
+            const metaParts = [];
+            if (photo.device) metaParts.push(photo.device);
+            if (photo.date) metaParts.push(photo.date);
+            if (!isNaN(photo.lat) && !isNaN(photo.lng)) {
+              metaParts.push(`${photo.lat.toFixed(4)}, ${photo.lng.toFixed(4)}`);
+            }
+            photo.caption = metaParts.join(' • ');
+
+            // Only render valid coordinate pins
             if (!isNaN(photo.lat) && !isNaN(photo.lng)) {
               renderPhotoMarker(photo);
             }
@@ -418,8 +434,7 @@
           console.error('Error loading Google Sheet data:', err);
         }
       });
-    });
-
+      
     window.addEventListener('resize', () => { map.resize(); });
   </script>
 
