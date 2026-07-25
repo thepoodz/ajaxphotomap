@@ -392,7 +392,7 @@
 
       // 3. Dynamic Fetch: Load photo points from external photos.json
       try {
-        const photosResponse = await fetch('/photos.json');
+        const photosResponse = await fetch('./photos.json');
         const data = await photosResponse.json();
 
         if (data && data.photos) {
