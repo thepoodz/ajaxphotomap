@@ -62,6 +62,13 @@
       "imageUrl": "photos/img_20260328_173321.jpg_compressed.jpeg",
       "lng": -78.98059,
       "lat": 43.85698
+    },
+    {
+      "imageUrl": "photos/img_20220129_070521.jpg_compressed.jpeg",
+      "title": "Paradise Beach",
+      "caption": "Moon over Lake Ontario at sunrise at Paradise Beach",
+      "lng": -78.99471,
+      "lat": 43.82728
     }
   ]
 }
