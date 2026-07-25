@@ -34,6 +34,13 @@
       "caption": "Looking west across the end of Duffins Creek at sunset",
       "lat": 43.8215,
       "lng": -79.03368
+    },
+    {
+      "imageUrl": "photos/Westney_tracks.jpg",
+      "title": "Westney North Tracks",
+      "caption": "Looking east along train tracks from bridge on Westney Road North.",
+      "lat": 43.89615,
+      "lng": -79.05082
     }
   ]
 }
