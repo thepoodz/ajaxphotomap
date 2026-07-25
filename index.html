@@ -3,420 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ajax Photo Map - Voyager Mode</title>
+  <title>Photo Map</title>
 
-  <!-- MapLibre CSS -->
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <!-- MapLibre GL JS CSS & JS -->
+  <link href="https://unpkg.com/maplibre-gl@^4.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@^4.0.0/dist/maplibre-gl.js"></script>
 
-  <!-- Netlify Identity Widget for Decap CMS -->
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <!-- PapaParse for parsing Google Sheet CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; }
-
-    /* Layout Wrapper */
-    .app-layout {
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* Map Container */
-    #map { 
-      width: 100vw;
-      height: 100vh;
-      transition: all 0.3s ease;
-    }
-
-    /* Right Side: Desktop Pop-out Photo Panel */
-    #photo-panel {
-      display: none; /* Hidden on mobile by default */
-      position: relative;
-      background: #1a1a1a;
-      color: #fff;
-      padding: 28px 24px 40px 24px;
-      overflow-y: auto;
-      z-index: 1000;
-    }
-
-    /* Desktop Split Screen (768px and up) */
-    @media (min-width: 768px) {
-      #photo-panel {
-        border-left: 1px solid #333;
-      }
-
-      #photo-panel.active {
-        display: block;
-        width: 70vw;
-        height: 100%;
-      }
-
-      .app-layout.panel-open #map {
-        width: 30vw;
-      }
-    }
-
-    /* Custom Full-Screen Lightbox Modal Overlay */
-    .photo-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(8px);
-      display: flex;
-      justify-content: center;
-      align-items: center; /* Vertically centers card */
-      z-index: 9999;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.25s ease, visibility 0.25s ease;
-      padding: 0; /* Zero side margins */
-    }
-
-    .photo-modal-overlay.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    /* Mobile First Modal Card: Full-width, square corners, no border */
-    .photo-modal-card {
-      position: relative;
-      background: #ffffff;
-      border: none;
-      border-radius: 0; /* Square edges */
-      width: 100vw;
-      max-width: 100vw;
-      height: auto; /* Shrinks to exact fit of photo + text */
-      max-height: 90vh; /* Keeps vertical room at top & bottom */
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      transform: scale(0.98);
-      transition: transform 0.25s ease;
-    }
-
-    .photo-modal-overlay.active .photo-modal-card {
-      transform: scale(1);
-    }
-
-    /* Desktop Modal Tweaks: Restores wide card when enlarging on desktop */
-    @media (min-width: 768px) {
-      .photo-modal-card {
-        max-width: 900px;
-        border-radius: 8px; /* Subtle radius for desktop modal */
-      }
-    }
-
-    .photo-modal-image-wrap {
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
       width: 100%;
-      background: #0f172a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      font-family: sans-serif;
     }
 
-    .photo-modal-image-wrap img {
-      max-width: 100%;
-      max-height: 55vh;
-      width: auto;
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    /* Popup Styling */
+    .maplibregl-popup-content {
+      padding: 12px;
+      max-width: 260px;
+      border-radius: 8px;
+    }
+
+    .popup-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: #111;
+    }
+
+    .popup-card img {
+      width: 100%;
       height: auto;
-      object-fit: contain;
-      border-radius: 0; /* Square photo edges */
+      border-radius: 6px;
       display: block;
+      margin-bottom: 8px;
     }
 
-    .photo-modal-info {
-      padding: 20px 24px;
-      background: #ffffff;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-
-    .photo-modal-info h2 {
-      color: #0f172a;
-      font-size: 22px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .photo-modal-info p {
-      color: #475569;
-      font-size: 15px;
-      line-height: 1.5;
-      margin-bottom: 16px;
-    }
-
-    /* Inline Close Button Row */
-    .button-row {
-      display: flex;
-      justify-content: flex-end;
-      width: 100%;
-    }
-
-    /* Universal Close Pill Button */
-    .pill-close-btn {
-      background: #ff4757;
-      color: #ffffff;
-      border: none;
-      border-radius: 24px;
-      padding: 10px 22px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
-      transition: transform 0.15s ease, background-color 0.15s ease;
-    }
-
-    .pill-close-btn:active {
-      transform: scale(0.95);
-      background: #e03e4d;
-    }
-
-    .pill-close-btn:hover {
-      background: #ff3344;
-    }
-
-    #photo-panel .button-row {
-      margin-top: 24px;
+    .popup-card p {
+      margin: 0;
+      font-size: 13px;
+      color: #444;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
-<div class="app-layout" id="app-layout">
-  <!-- Map Container -->
+
   <div id="map"></div>
 
-  <!-- Pop-out Photo Panel (Desktop) -->
-  <div id="photo-panel">
-    <div id="photo-content"></div>
-  </div>
-</div>
-
-  <!-- Vertically Centered Full-Bleed Lightbox Modal Overlay -->
-  <div id="photo-modal" class="photo-modal-overlay">
-    <div class="photo-modal-card" id="modal-card">
-      <div class="photo-modal-image-wrap">
-        <img id="modal-img" src="" alt="" />
-      </div>
-      <div class="photo-modal-info">
-        <h2 id="modal-title"></h2>
-        <p id="modal-caption"></p>
-        <div class="button-row">
-          <button class="pill-close-btn" id="modal-close-btn">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MapLibre JS -->
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-
   <script>
-    const appLayout = document.getElementById('app-layout');
-    const photoPanel = document.getElementById('photo-panel');
-
-    // Initial map settings
-    const defaultCenter = [-79.0270, 43.8620];
-    const defaultZoom = 11.5;
-    const defaultBearing = -17;
+    // ==========================================
+    // 1. CONFIGURATION
+    // ==========================================
+    // Replace with your Google Sheet ID
+    const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE';
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
     // Initialize MapLibre
     const map = new maplibregl.Map({
       container: 'map',
-      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-      center: defaultCenter,
-      zoom: defaultZoom,
-      bearing: defaultBearing,
-      pitch: 0,
-      dragRotate: false,
-      pitchWithRotate: false,
-      touchPitch: false,
-      touchZoomRotate: true
+      style: 'https://demotiles.maplibre.org/style.json', // Open-source demo tile style
+      center: [-79.0204, 43.8501], // Default coordinates
+      zoom: 12
     });
 
-    map.touchZoomRotate.disableRotation();
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    // Add navigation controls (+ / - buttons)
+    map.addControl(new maplibregl.NavigationControl());
 
-    function buildInverseWorldMask(geometry) {
-      let holes = [];
-      if (geometry.type === 'Polygon') {
-        holes = geometry.coordinates;
-      } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach(polyCoords => holes.push(polyCoords[0]));
-      }
-      return {
-        "type": "FeatureCollection",
-        "features": [{
-          "type": "Feature",
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]], ...holes]
-          }
-        }]
-      };
-    }
+    // ==========================================
+    // 2. LOAD PINS FROM GOOGLE SHEETS
+    // ==========================================
+    map.on('load', () => {
+      Papa.parse(SHEET_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          const photos = results.data;
 
-    // Modal Lightbox Logic
-    const modalOverlay = document.getElementById('photo-modal');
-    const modalImg = document.getElementById('modal-img');
-    const modalTitle = document.getElementById('modal-title');
-    const modalCaption = document.getElementById('modal-caption');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
+          photos.forEach(photo => {
+            const lat = parseFloat(photo.lat);
+            const lng = parseFloat(photo.lng);
 
-    function openModal(photo) {
-      modalImg.src = photo.imageUrl || photo.image || photo.url || '';
-      modalImg.alt = photo.title || 'Untitled';
-      modalTitle.textContent = photo.title || 'Untitled';
-      modalCaption.textContent = photo.caption || photo.description || '';
-      modalOverlay.classList.add('active');
-    }
+            // Only add valid points
+            if (!isNaN(lat) && !isNaN(lng)) {
+              
+              // Build Popup HTML Card
+              const popupHtml = `
+                <div class="popup-card">
+                  ${photo.title ? `<h3>${photo.title}</h3>` : ''}
+                  ${photo.image ? `<img src="${photo.image}" alt="${photo.title || 'Photo'}">` : ''}
+                  ${photo.description ? `<p>${photo.description}</p>` : ''}
+                </div>
+              `;
 
-    function closeModal() { 
-      modalOverlay.classList.remove('active'); 
-    }
+              const popup = new maplibregl.Popup({ offset: 25 })
+                .setHTML(popupHtml);
 
-    modalCloseBtn.addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-
-    // Desktop Panel Controls
-    function openPanel(photo) {
-      const imageSrc = photo.imageUrl || photo.image || photo.url || '';
-      const title = photo.title || 'Untitled';
-      const caption = photo.caption || photo.description || '';
-      const date = photo.date || '';
-
-      const panelContent = document.getElementById('photo-content');
-
-      panelContent.innerHTML = `
-        <div style="width: 100%;">
-          <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 0; margin-bottom: 20px; background: #000; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" id="side-panel-img" />
-          <h2 style="font-size: 1.6rem; margin-bottom: 8px; color: #fff; font-weight: 600;">${title}</h2>
-          ${date ? `<p style="font-size: 0.9rem; color: #888; margin-bottom: 14px;">${date}</p>` : ''}
-          ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem; margin-bottom: 20px;">${caption}</p>` : ''}
-          <div class="button-row">
-            <button class="pill-close-btn" id="panel-close-btn">Close</button>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('side-panel-img').addEventListener('click', () => {
-        openModal(photo);
-      });
-
-      document.getElementById('panel-close-btn').addEventListener('click', closePanel);
-
-      photoPanel.classList.add('active');
-      appLayout.classList.add('panel-open');
-      
-      setTimeout(() => { map.resize(); }, 50);
-    }
-
-    function closePanel() {
-      photoPanel.classList.remove('active');
-      appLayout.classList.remove('panel-open');
-
-      setTimeout(() => {
-        map.resize();
-        map.easeTo({
-          center: defaultCenter,
-          zoom: defaultZoom,
-          bearing: defaultBearing,
-          duration: 600,
-          essential: true
-        });
-      }, 250);
-    }
-
-    // Marker Rendering
-    function renderPhotoMarker(photo) {
-      const marker = new maplibregl.Marker({ color: '#ff4757' })
-        .setLngLat([photo.lng, photo.lat])
-        .addTo(map);
-
-      marker.getElement().addEventListener('click', () => {
-        const isMobile = window.innerWidth < 768;
-
-        if (isMobile) {
-          openModal(photo);
-        } else {
-          openPanel(photo);
-        }
-      });
-    }
-
-    map.on('load', async () => {
-      // 1. Reveal street labels earlier
-      const styleLayers = map.getStyle().layers;
-      styleLayers.forEach(layer => {
-        if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('label')) {
-          if (layer.minzoom) {
-            map.setLayerZoomRange(layer.id, Math.max(0, layer.minzoom - 3), layer.maxzoom || 24);
-          }
-        }
-      });
-
-      // 2. Fetch official Ajax boundary
-      try {
-        const response = await fetch('https://nominatim.openstreetmap.org/search?city=Ajax&state=Ontario&country=Canada&polygon_geojson=1&format=geojson');
-        const data = await response.json();
-        const ajaxFeature = data.features.find(f => f.properties.type === 'administrative' || f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') || data.features[0];
-
-        if (ajaxFeature) {
-          const maskGeoJSON = buildInverseWorldMask(ajaxFeature.geometry);
-          map.addSource('ajax-mask-source', { 'type': 'geojson', 'data': maskGeoJSON });
-          map.addLayer({
-            'id': 'ajax-dim-mask',
-            'type': 'fill',
-            'source': 'ajax-mask-source',
-            'paint': { 'fill-color': '#1e293b', 'fill-opacity': 0.38 }
-          });
-          map.addLayer({
-            'id': 'ajax-mask-outline',
-            'type': 'line',
-            'source': 'ajax-mask-source',
-            'paint': { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.85 }
+              // Add Marker to Map
+              new maplibregl.Marker({ color: '#e63946' })
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(map);
+            }
           });
         }
-      } catch (err) {
-        console.error('Error fetching official boundary:', err);
-      }
-
-      // 3. Dynamic Fetch: Load photo points from external photos.json
-      try {
-        const photosResponse = await fetch('./photos.json');
-        const data = await photosResponse.json();
-
-        if (data && data.photos) {
-          data.photos.forEach(renderPhotoMarker);
-        }
-      } catch (err) {
-        console.error('Error loading photos.json:', err);
-      }
+      });
     });
 
-    window.addEventListener('resize', () => { map.resize(); });
+    // ==========================================
+    // 3. HELPER: CLICK MAP TO COPY LAT/LNG
+    // ==========================================
+    map.on('click', (e) => {
+      const lat = e.lngLat.lat.toFixed(6);
+      const lng = e.lngLat.lng.toFixed(6);
+
+      // Copy coordinates directly to your clipboard
+      navigator.clipboard.writeText(`${lat}, ${lng}`).then(() => {
+        console.log(`Copied coordinates: ${lat}, ${lng}`);
+      });
+    });
   </script>
 
-  <!-- Netlify Identity Login Redirect Script -->
-  <script>
-    if (window.netlifyIdentity) {
-      window.netlifyIdentity.on("init", user => {
-        if (!user) {
-          window.netlifyIdentity.on("login", () => {
-            document.location.href = "/admin/";
-          });
-        }
-      });
-    }
-  </script>
 </body>
 </html>
