@@ -9,7 +9,7 @@
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
 
   <!-- PapaParse for parsing Google Sheet CSV -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <!-- Netlify Identity Widget for Decap CMS -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
@@ -303,7 +303,6 @@
         <div style="width: 100%;">
           <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 65vh; object-fit: contain; border-radius: 0; margin-bottom: 20px; background: #000; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" id="side-panel-img" />
           <h2 style="font-size: 1.6rem; margin-bottom: 8px; color: #fff; font-weight: 600;">${title}</h2>
-          ${date ? `<p style="font-size: 0.9rem; color: #888; margin-bottom: 14px;">${date}</p>` : ''}
           ${caption ? `<p style="line-height: 1.6; color: #ccc; font-size: 1rem; margin-bottom: 20px;">${caption}</p>` : ''}
           <div class="button-row">
             <button class="pill-close-btn" id="panel-close-btn">Close</button>
@@ -393,7 +392,7 @@
         console.error('Error fetching official boundary:', err);
       }
 
-     // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
+      // 3. Dynamic Fetch: Load photo points from Google Sheets CSV
       const SHEET_ID = '1snkK8IwRF1KeheABiig14VgBmXQWI-VP2fySK4CmjSE'; 
       const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
@@ -405,27 +404,28 @@
           const rows = results.data;
 
           rows.forEach(row => {
-            // Map your specific spreadsheet columns to the photo object
-            const photo = {
-              title: row.Title || row.title || 'Untitled',
-              lat: parseFloat(row.Lat || row.lat),
-              lng: parseFloat(row.Long || row.lng || row.Lng),
-              imageUrl: row.Image || row.image || '',
-              device: row.Device || row.device || '',
-              date: row.Date || row.date || ''
-            };
+            // Read spreadsheet columns: Title, Device, Date, Lat, Long, Image
+            const latVal = parseFloat(row.Lat || row.lat);
+            const lngVal = parseFloat(row.Long || row.long || row.Lng || row.lng);
 
-            // Build a formatted metadata line: "iPhone 13 • Oct 2023 • 43.8501, -79.0204"
-            const metaParts = [];
-            if (photo.device) metaParts.push(photo.device);
-            if (photo.date) metaParts.push(photo.date);
-            if (!isNaN(photo.lat) && !isNaN(photo.lng)) {
-              metaParts.push(`${photo.lat.toFixed(4)}, ${photo.lng.toFixed(4)}`);
-            }
-            photo.caption = metaParts.join(' • ');
+            if (!isNaN(latVal) && !isNaN(lngVal)) {
+              const device = row.Device || row.device || '';
+              const date = row.Date || row.date || '';
 
-            // Only render valid coordinate pins
-            if (!isNaN(photo.lat) && !isNaN(photo.lng)) {
+              // Format metadata string: "iPhone 15 Pro • May 2025 • 43.8620, -79.0270"
+              const metaParts = [];
+              if (device) metaParts.push(device);
+              if (date) metaParts.push(date);
+              metaParts.push(`${latVal.toFixed(4)}, ${lngVal.toFixed(4)}`);
+
+              const photo = {
+                title: row.Title || row.title || 'Untitled',
+                lat: latVal,
+                lng: lngVal,
+                imageUrl: row.Image || row.image || '',
+                caption: metaParts.join(' • ')
+              };
+
               renderPhotoMarker(photo);
             }
           });
@@ -434,7 +434,8 @@
           console.error('Error loading Google Sheet data:', err);
         }
       });
-      
+    });
+
     window.addEventListener('resize', () => { map.resize(); });
   </script>
 
