@@ -63,26 +63,25 @@
     // ==========================================
     // 1. CONFIGURATION
     // ==========================================
-    // Replace with your Google Sheet ID
     const SHEET_ID = '2PACX-1vRThlZrUgFmaOVTTgjPnDrUNuIGo0M23H98hoAGih-pmA-LvNzIdAmznNXA5k9teaeCUM-cZpalMu3d';
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/2PACX-1vRThlZrUgFmaOVTTgjPnDrUNuIGo0M23H98hoAGih-pmA-LvNzIdAmznNXA5k9teaeCUM-cZpalMu3d/pub?output=csv`;
 
-    // Initialize MapLibre
+    // Initialize MapLibre with CARTO Voyager basemap
     const map = new maplibregl.Map({
       container: 'map',
-      style: '// TO THIS:
-style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',', // Open-source demo tile style
-      center: [-79.0204, 43.8501], // Default coordinates
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      center: [-79.0204, 43.8501], // Ajax, ON
       zoom: 12
     });
 
-    // Add navigation controls (+ / - buttons)
     map.addControl(new maplibregl.NavigationControl());
 
     // ==========================================
-    // 2. LOAD PINS FROM GOOGLE SHEETS
+    // 2. LOAD DATA ON MAP LOAD
     // ==========================================
     map.on('load', () => {
+      
+      // Load Google Sheet Pins
       Papa.parse(SHEET_URL, {
         download: true,
         header: true,
@@ -94,10 +93,7 @@ style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',', // Open
             const lat = parseFloat(photo.lat);
             const lng = parseFloat(photo.lng);
 
-            // Only add valid points
             if (!isNaN(lat) && !isNaN(lng)) {
-              
-              // Build Popup HTML Card
               const popupHtml = `
                 <div class="popup-card">
                   ${photo.title ? `<h3>${photo.title}</h3>` : ''}
@@ -106,10 +102,8 @@ style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',', // Open
                 </div>
               `;
 
-              const popup = new maplibregl.Popup({ offset: 25 })
-                .setHTML(popupHtml);
+              const popup = new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml);
 
-              // Add Marker to Map
               new maplibregl.Marker({ color: '#e63946' })
                 .setLngLat([lng, lat])
                 .setPopup(popup)
@@ -121,13 +115,12 @@ style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',', // Open
     });
 
     // ==========================================
-    // 3. HELPER: CLICK MAP TO COPY LAT/LNG
+    // 3. CLICK MAP TO COPY LAT/LNG
     // ==========================================
     map.on('click', (e) => {
       const lat = e.lngLat.lat.toFixed(6);
       const lng = e.lngLat.lng.toFixed(6);
 
-      // Copy coordinates directly to your clipboard
       navigator.clipboard.writeText(`${lat}, ${lng}`).then(() => {
         console.log(`Copied coordinates: ${lat}, ${lng}`);
       });
