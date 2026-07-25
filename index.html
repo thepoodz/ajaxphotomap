@@ -140,91 +140,124 @@
     </div>
   </div>
 
-  <!-- MapLibre GL JS -->
-  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+  <!-- MapLibre JS -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
   <script>
-    // 1. Initialize MapLibre
-    // 1. Initialize MapLibre with street tiles
-const map = new maplibregl.Map({
-  container: 'map-panel',
-  
-  // Free, high-detail street style (Carto Dark Matter fits dark mode well):
-  style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  
-  /* 
-   * Alternatively, if you want a clean light street map instead, use:
-   * style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-   */
+    // Initialize map in Voyager mode with locked rotation
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+      center: [-79.0204, 43.8600],
+      zoom: 13,
+      bearing: -17,
+      pitch: 0,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      touchZoomRotate: true
+    });
 
-  center: [-79.0204, 43.8509], // Ajax, ON
-  zoom: 12
-});
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
-    map.addControl(new maplibregl.NavigationControl());
-
-    map.on('load', async () => {
-      // Load photos.json from root directory
-      try {
-        const response = await fetch('photos.json');
-        const photoData = await response.json();
-
-        map.addSource('photos-source', {
-          type: 'geojson',
-          data: photoData
-        });
-
-        map.addLayer({
-          id: 'photo-pins',
-          type: 'circle',
-          source: 'photos-source',
-          paint: {
-            'circle-radius': 8,
-            'circle-color': '#ff4757',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff'
-          }
-        });
-
-        map.on('mouseenter', 'photo-pins', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'photo-pins', () => { map.getCanvas().style.cursor = ''; });
-
-      } catch (err) {
-        console.error("Error loading photos.json:", err);
+    function buildInverseWorldMask(geometry) {
+      let holes = [];
+      if (geometry.type === 'Polygon') {
+        holes = geometry.coordinates;
+      } else if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach(polyCoords => holes.push(polyCoords[0]));
       }
-
-      // Ensure canvas fills split container properly on initial render
-      map.resize();
-    });
-
-    // 2. Route Marker Clicks to Right Photo Panel
-    map.on('click', 'photo-pins', (e) => {
-      const feature = e.features[0];
-      const props = feature.properties;
-
-      displayPhotoDetails(props);
-
-      map.flyTo({
-        center: feature.geometry.coordinates,
-        zoom: 15,
-        essential: true
-      });
-    });
-
-    function displayPhotoDetails(props) {
-      document.getElementById('empty-state').style.display = 'none';
-      document.getElementById('photo-card').style.display = 'block';
-
-      // Maps properties coming from Decap / photos.json
-      document.getElementById('active-photo').src = props.image || props.imageUrl || props.url || '';
-      document.getElementById('photo-title').textContent = props.title || 'Untitled';
-      document.getElementById('photo-date').textContent = props.date || '';
-      document.getElementById('photo-description').textContent = props.description || props.notes || '';
+      return {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]], ...holes]
+          }
+        }]
+      };
     }
 
-    // Keep map sizing tight when browser resizes
-    window.addEventListener('resize', () => {
-      map.resize();
+    // Modal Lightbox Logic
+    const modalOverlay = document.getElementById('photo-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalCaption = document.getElementById('modal-caption');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+    function openModal(photo) {
+      modalImg.src = photo.imageUrl;
+      modalImg.alt = photo.title;
+      modalTitle.textContent = photo.title;
+      modalCaption.textContent = photo.caption;
+      modalOverlay.classList.add('active');
+    }
+
+    function closeModal() { modalOverlay.classList.remove('active'); }
+    modalCloseBtn.addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    function renderPhotoMarker(photo) {
+      const marker = new maplibregl.Marker({ color: '#ff4757' })
+        .setLngLat([photo.lng, photo.lat])
+        .addTo(map);
+
+      marker.getElement().addEventListener('click', () => {
+        openModal(photo);
+      });
+    }
+
+    map.on('load', async () => {
+      // 1. Reveal street labels earlier
+      const styleLayers = map.getStyle().layers;
+      styleLayers.forEach(layer => {
+        if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('label')) {
+          if (layer.minzoom) {
+            map.setLayerZoomRange(layer.id, Math.max(0, layer.minzoom - 3), layer.maxzoom || 24);
+          }
+        }
+      });
+
+      // 2. Fetch official Ajax boundary
+      try {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?city=Ajax&state=Ontario&country=Canada&polygon_geojson=1&format=geojson');
+        const data = await response.json();
+        const ajaxFeature = data.features.find(f => f.properties.type === 'administrative' || f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') || data.features[0];
+
+        if (ajaxFeature) {
+          const maskGeoJSON = buildInverseWorldMask(ajaxFeature.geometry);
+          map.addSource('ajax-mask-source', { 'type': 'geojson', 'data': maskGeoJSON });
+          map.addLayer({
+            'id': 'ajax-dim-mask',
+            'type': 'fill',
+            'source': 'ajax-mask-source',
+            'paint': { 'fill-color': '#1e293b', 'fill-opacity': 0.38 }
+          });
+          map.addLayer({
+            'id': 'ajax-mask-outline',
+            'type': 'line',
+            'source': 'ajax-mask-source',
+            'paint': { 'line-color': '#0284c7', 'line-width': 2, 'line-opacity': 0.85 }
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching official boundary:', err);
+      }
+
+      // 3. Dynamic Fetch: Load photo points from external photos.json
+      try {
+        const photosResponse = await fetch('/photos.json');
+        const data = await photosResponse.json();
+
+        if (data && data.photos) {
+          data.photos.forEach(renderPhotoMarker);
+        }
+      } catch (err) {
+        console.error('Error loading photos.json:', err);
+      }
     });
   </script>
 </body>
