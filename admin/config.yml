@@ -2,7 +2,7 @@ backend:
   name: github
   repo: thepodz/ajaxphotomap
   branch: main
-  site_domain: ajaxmap.netlify.app
+  app_id: Ov23liIFvs6eHSwtluRx
 
 media_folder: "photos"
 public_folder: "photos"
