@@ -318,6 +318,7 @@
         console.error('Error loading photos.json:', err);
       }
     });
+    window.addEventListener('resize', () => { map.resize(); });
   </script>
 
   <!-- Netlify Identity Login Redirect Script -->
