@@ -16,7 +16,7 @@
     html, body { height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #e8ecef; }
     #map { width: 100%; height: 100vh; background-color: #e8ecef; }
 
-    /* Custom Full-Screen Lightbox Modal Overlay */
+    /* Custom Full-Screen Lightbox Modal Overlay (Kept for optional backup) */
     .photo-modal-overlay {
       position: fixed;
       top: 0;
@@ -131,46 +131,47 @@
       font-size: 15px;
       line-height: 1.4;
     }
+
     /* Container holding map + photo side-by-side */
-.app-layout {
-  display: flex;
-  flex-direction: column-reverse; /* Stacks on mobile */
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
+    .app-layout {
+      display: flex;
+      flex-direction: column-reverse; /* Stacks on mobile */
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
 
-/* Desktop Split Screen */
-@media (min-width: 768px) {
-  .app-layout {
-    flex-direction: row; /* Side-by-side on desktop */
-  }
-  
-  /* Left Side: Map takes remaining width */
-  #map { 
-    flex: 1;
-    height: 100% !important;
-  }
+    /* Desktop Split Screen */
+    @media (min-width: 768px) {
+      .app-layout {
+        flex-direction: row; /* Side-by-side on desktop */
+      }
+      
+      /* Left Side: Map takes remaining width */
+      #map { 
+        flex: 1;
+        height: 100% !important;
+      }
 
-  /* Right Side: Photo detail panel */
-  #photo-panel {
-    width: 400px; /* Fixed clean panel on right */
-    height: 100%;
-    background: #1a1a1a;
-    color: #fff;
-    padding: 20px;
-    overflow-y: auto;
-    border-left: 1px solid #333;
-  }
-}
+      /* Right Side: Photo detail panel */
+      #photo-panel {
+        width: 400px; /* Fixed clean panel on right */
+        height: 100%;
+        background: #1a1a1a;
+        color: #fff;
+        padding: 20px;
+        overflow-y: auto;
+        border-left: 1px solid #333;
+      }
+    }
   </style>
 </head>
 <body>
 <div class="app-layout">
-  <!-- Your existing map div -->
+  <!-- Map container -->
   <div id="map"></div>
 
-  <!-- New side panel for photo display -->
+  <!-- Side panel for photo display -->
   <div id="photo-panel">
     <div id="photo-content">
       <p style="color: #888; text-align: center; margin-top: 50%;">
@@ -239,7 +240,7 @@
       };
     }
 
-    // Modal Lightbox Logic
+    // Modal Lightbox Logic (Retained)
     const modalOverlay = document.getElementById('photo-modal');
     const modalImg = document.getElementById('modal-img');
     const modalTitle = document.getElementById('modal-title');
@@ -247,10 +248,10 @@
     const modalCloseBtn = document.getElementById('modal-close-btn');
 
     function openModal(photo) {
-      modalImg.src = photo.imageUrl;
-      modalImg.alt = photo.title;
-      modalTitle.textContent = photo.title;
-      modalCaption.textContent = photo.caption;
+      modalImg.src = photo.imageUrl || photo.image || photo.url || '';
+      modalImg.alt = photo.title || 'Untitled';
+      modalTitle.textContent = photo.title || 'Untitled';
+      modalCaption.textContent = photo.caption || photo.description || '';
       modalOverlay.classList.add('active');
     }
 
@@ -259,13 +260,43 @@
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
+    // RENDER PIN FUNCTION: Updates the right-hand panel on click
     function renderPhotoMarker(photo) {
       const marker = new maplibregl.Marker({ color: '#ff4757' })
         .setLngLat([photo.lng, photo.lat])
         .addTo(map);
 
+      // Listen directly for clicks on the pin DOM element
       marker.getElement().addEventListener('click', () => {
-        openModal(photo);
+        const imageSrc = photo.imageUrl || photo.image || photo.url || '';
+        const title = photo.title || 'Untitled';
+        const caption = photo.caption || photo.description || '';
+        const date = photo.date || '';
+
+        const panelContent = document.getElementById('photo-content');
+
+        if (panelContent) {
+          panelContent.innerHTML = `
+            <div style="width: 100%;">
+              <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 55vh; object-fit: contain; border-radius: 8px; margin-bottom: 16px; background: #000; cursor: pointer;" id="side-panel-img" />
+              <h2 style="font-size: 1.3rem; margin-bottom: 6px; color: #fff;">${title}</h2>
+              ${date ? `<p style="font-size: 0.85rem; color: #888; margin-bottom: 12px;">${date}</p>` : ''}
+              ${caption ? `<p style="line-height: 1.5; color: #ccc; font-size: 0.95rem;">${caption}</p>` : ''}
+            </div>
+          `;
+
+          // Optional: Clicking the image in the panel will enlarge it in the modal!
+          document.getElementById('side-panel-img').addEventListener('click', () => {
+            openModal(photo);
+          });
+        }
+
+        // Pan map smoothly to selected pin
+        map.flyTo({
+          center: [photo.lng, photo.lat],
+          zoom: 14,
+          essential: true
+        });
       });
     }
 
@@ -318,39 +349,9 @@
         console.error('Error loading photos.json:', err);
       }
     });
+
+    // Recalculate map dimensions on browser resize
     window.addEventListener('resize', () => { map.resize(); });
-    // Global handler: Directs any clicked photo point into the side panel
-map.on('click', (e) => {
-  // Query features at the clicked point
-  const features = map.queryRenderedFeatures(e.point);
-  
-  if (!features.length) return;
-
-  // Look for a feature with photo properties
-  const photoFeature = features.find(f => f.properties && (f.properties.image || f.properties.title || f.properties.url));
-
-  if (photoFeature) {
-    const props = photoFeature.properties;
-
-    const imageSrc = props.image || props.imageUrl || props.url || '';
-    const title = props.title || 'Untitled';
-    const date = props.date || '';
-    const description = props.description || props.notes || '';
-
-    const panelContent = document.getElementById('photo-content');
-
-    if (panelContent) {
-      panelContent.innerHTML = `
-        <div style="width: 100%;">
-          <img src="${imageSrc}" alt="${title}" style="width: 100%; height: auto; max-height: 50vh; object-fit: contain; border-radius: 8px; margin-bottom: 16px; background: #000;" />
-          <h2 style="font-size: 1.3rem; margin-bottom: 6px; color: #fff;">${title}</h2>
-          ${date ? `<p style="font-size: 0.85rem; color: #888; margin-bottom: 12px;">${date}</p>` : ''}
-          ${description ? `<p style="line-height: 1.5; color: #ccc; font-size: 0.95rem;">${description}</p>` : ''}
-        </div>
-      `;
-    }
-  }
-});
   </script>
 
   <!-- Netlify Identity Login Redirect Script -->
