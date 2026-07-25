@@ -1,0 +1,27 @@
+backend:
+  name: git-gateway
+  branch: main # or master, depending on your GitHub default
+
+media_folder: "photos" # Where uploaded images are stored
+public_folder: "photos" # How images are referenced in JSON
+
+collections:
+  - name: "photo_data" # CMS internally uses this
+    label: "Photo Map Data"
+    folder: "" # Store the final JSON in the root folder
+    create: false # Important: CMS only edits photos.json
+    delete: false
+    format: "json"
+    slug: "{{fields.slug}}" # (Used if create were true)
+    files:
+      - label: "Ajax Photo Collection"
+        name: "photos"
+        file: "photos.json" # The exact file to manage
+        fields:
+          - {label: "Photo Gallery", name: "photos", widget: "list", fields: [
+              {label: "Photo Title", name: "title", widget: "string"},
+              {label: "Caption", name: "caption", widget: "text"},
+              {label: "Image File", name: "imageUrl", widget: "image"},
+              {label: "Longitude", name: "lng", widget: "number", value_type: "float"},
+              {label: "Latitude", name: "lat", widget: "number", value_type: "float"}
+            ]}
