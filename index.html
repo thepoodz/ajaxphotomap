@@ -131,6 +131,38 @@
       font-size: 15px;
       line-height: 1.4;
     }
+    /* Container holding map + photo side-by-side */
+.app-layout {
+  display: flex;
+  flex-direction: column-reverse; /* Stacks on mobile */
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Desktop Split Screen */
+@media (min-width: 768px) {
+  .app-layout {
+    flex-direction: row; /* Side-by-side on desktop */
+  }
+  
+  /* Left Side: Map takes remaining width */
+  #map { 
+    flex: 1;
+    height: 100% !important;
+  }
+
+  /* Right Side: Photo detail panel */
+  #photo-panel {
+    width: 400px; /* Fixed clean panel on right */
+    height: 100%;
+    background: #1a1a1a;
+    color: #fff;
+    padding: 20px;
+    overflow-y: auto;
+    border-left: 1px solid #333;
+  }
+}
   </style>
 </head>
 <body>
